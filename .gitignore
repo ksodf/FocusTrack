@@ -1,0 +1,16 @@
+# Java
+*.class
+*.jar
+*.war
+*.log
+
+# IDEs
+.idea/
+*.iml
+.vscode/
+*.swp
+
+# Build
+target/
+build/
+out/
