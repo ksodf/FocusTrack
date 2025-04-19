@@ -2,25 +2,117 @@ package main.app;
 
 import main.model.Task;
 import main.model.TaskManager;
+import main.timer.*;
+import main.ui.TimerUI;
+
 public class App {
     public static void main(String[] args) throws Exception {
+        System.out.println("TaskManager with Timer - Java OOP Final Project");
+        System.out.println("==============================================");
+        
+        // Demo mode - create and show sample tasks
+        if (args.length > 0 && args[0].equals("demo")) {
+            runDemoMode();
+        } else {
+            // Interactive mode - start the UI
+            TimerUI ui = new TimerUI();
+            ui.start();
+        }
+    }
+    
+    private static void runDemoMode() throws InterruptedException {
         TaskManager manager = TaskManager.getInstance();
-
-        // Add tasks
-        manager.addTask(new Task("Finish report", "Due tomorrow"));
-        manager.addTask(new Task("Read chapter 4", "Pages 45–62"));
-
-        // Complete task 0
-        manager.completeTask(0);
-
-        // Edit task 1
-        manager.editTask(1, "Read chapter 4 & 5", "Pages 45-80");
-
-        // Show tasks and progress
+        TimerManager timerManager = TimerManager.getInstance();
+        
+        // Add sample tasks
+        Task reportTask = new Task("Finish report", "Due tomorrow");
+        Task readingTask = new Task("Read chapter 4", "Pages 45–62");
+        Task codingTask = new Task("Implement timer feature", "For the Java OOP project");
+        
+        manager.addTask(reportTask);
+        manager.addTask(readingTask);
+        manager.addTask(codingTask);
+        
+        // List all tasks
+        System.out.println("\nCurrent tasks:");
         for (Task task : manager.getTasks()) {
             System.out.println(task);
         }
-
-        System.out.println("Progress: " + manager.getCompletionRate() + "%");
+        
+        // Demo timer with different strategies
+        System.out.println("\nDemonstrating different timer strategies:");
+        
+        // Start a Pomodoro timer for report task
+        System.out.println("\n1. Starting Pomodoro timer for 'Finish report' task");
+        TimerStrategy pomodoroStrategy = new PomodoroTimer();
+        System.out.println("Strategy: " + pomodoroStrategy.getName() + " - " + pomodoroStrategy.getDescription());
+        
+        TaskTimer reportTimer = timerManager.startTimer(reportTask, pomodoroStrategy);
+        reportTimer.setListener(createDemoListener(reportTask, reportTimer));
+        
+        // Simulate 5 seconds of timer running
+        Thread.sleep(5000);
+        System.out.println("\nPausing the timer...");
+        timerManager.pauseTimer(reportTask);
+        
+        // Start a Short Break timer for reading task
+        System.out.println("\n2. Starting Short Break timer for 'Read chapter 4' task");
+        TimerStrategy shortBreakStrategy = new ShortBreakTimer();
+        System.out.println("Strategy: " + shortBreakStrategy.getName() + " - " + shortBreakStrategy.getDescription());
+        
+        TaskTimer readingTimer = timerManager.startTimer(readingTask, shortBreakStrategy);
+        readingTimer.setListener(createDemoListener(readingTask, readingTimer));
+        
+        // Simulate 5 seconds of timer running
+        Thread.sleep(5000);
+        
+        // Start a Long Break timer for coding task
+        System.out.println("\n3. Starting Long Break timer for 'Implement timer feature' task");
+        TimerStrategy longBreakStrategy = new LongBreakTimer();
+        System.out.println("Strategy: " + longBreakStrategy.getName() + " - " + longBreakStrategy.getDescription());
+        
+        TaskTimer codingTimer = timerManager.startTimer(codingTask, longBreakStrategy);
+        codingTimer.setListener(createDemoListener(codingTask, codingTimer));
+        
+        // Simulate 5 seconds of timer running
+        Thread.sleep(5000);
+        
+        // End demo
+        timerManager.clearAllTimers();
+        System.out.println("\nDemo completed. Timers canceled.");
+        
+        // Complete a task
+        manager.completeTask(0);
+        
+        // Show updated task list and progress
+        System.out.println("\nFinal task status:");
+        for (Task task : manager.getTasks()) {
+            System.out.println(task);
+        }
+        
+        System.out.println("\nProgress: " + manager.getCompletionRate() + "%");
+        System.out.println("\nRun the application without parameters to start in interactive mode.");
+    }
+    
+    private static TaskTimer.TimerListener createDemoListener(final Task task, final TaskTimer timer) {
+        return new TaskTimer.TimerListener() {
+            @Override
+            public void onTick(int seconds) {
+                System.out.print("\r" + task.getTitle() + " - " + timer.getPhaseText() + " phase: " + timer.getFormattedTime());
+            }
+            
+            @Override
+            public void onPhaseComplete(boolean wasWorkPhase) {
+                System.out.println("\n" + (wasWorkPhase ? "Work" : "Break") + " phase complete!");
+                if (wasWorkPhase) {
+                    task.incrementPomodoros();
+                }
+            }
+            
+            @Override
+            public void onTimerComplete() {
+                System.out.println("\nTimer cycle completed!");
+            }
+        };
     }
 }
