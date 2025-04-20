@@ -2,6 +2,7 @@ package main.app;
 
 import main.model.Task;
 import main.model.TaskManager;
+import main.sound.SoundManager;
 import main.timer.*;
 import main.ui.TimerUI;
 
@@ -9,6 +10,9 @@ public class App {
     public static void main(String[] args) throws Exception {
         System.out.println("TaskManager with Timer - Java OOP Final Project");
         System.out.println("==============================================");
+        
+        // Initialize sound manager
+        SoundManager.getInstance();
         
         // Demo mode - create and show sample tasks
         if (args.length > 0 && args[0].equals("demo")) {
@@ -23,6 +27,7 @@ public class App {
     private static void runDemoMode() throws InterruptedException {
         TaskManager manager = TaskManager.getInstance();
         TimerManager timerManager = TimerManager.getInstance();
+        SoundManager soundManager = SoundManager.getInstance();
         
         // Add sample tasks
         Task reportTask = new Task("Finish report", "Due tomorrow");
@@ -48,7 +53,7 @@ public class App {
         System.out.println("Strategy: " + pomodoroStrategy.getName() + " - " + pomodoroStrategy.getDescription());
         
         TaskTimer reportTimer = timerManager.startTimer(reportTask, pomodoroStrategy);
-        reportTimer.setListener(createDemoListener(reportTask, reportTimer));
+        reportTimer.setListener(createDemoListener(reportTask, reportTimer, soundManager));
         
         // Simulate 5 seconds of timer running
         Thread.sleep(5000);
@@ -61,7 +66,7 @@ public class App {
         System.out.println("Strategy: " + shortBreakStrategy.getName() + " - " + shortBreakStrategy.getDescription());
         
         TaskTimer readingTimer = timerManager.startTimer(readingTask, shortBreakStrategy);
-        readingTimer.setListener(createDemoListener(readingTask, readingTimer));
+        readingTimer.setListener(createDemoListener(readingTask, readingTimer, soundManager));
         
         // Simulate 5 seconds of timer running
         Thread.sleep(5000);
@@ -72,7 +77,7 @@ public class App {
         System.out.println("Strategy: " + longBreakStrategy.getName() + " - " + longBreakStrategy.getDescription());
         
         TaskTimer codingTimer = timerManager.startTimer(codingTask, longBreakStrategy);
-        codingTimer.setListener(createDemoListener(codingTask, codingTimer));
+        codingTimer.setListener(createDemoListener(codingTask, codingTimer, soundManager));
         
         // Simulate 5 seconds of timer running
         Thread.sleep(5000);
@@ -94,7 +99,7 @@ public class App {
         System.out.println("\nRun the application without parameters to start in interactive mode.");
     }
     
-    private static TaskTimer.TimerListener createDemoListener(final Task task, final TaskTimer timer) {
+    private static TaskTimer.TimerListener createDemoListener(final Task task, final TaskTimer timer, final SoundManager soundManager) {
         return new TaskTimer.TimerListener() {
             @Override
             public void onTick(int seconds) {
@@ -106,12 +111,19 @@ public class App {
                 System.out.println("\n" + (wasWorkPhase ? "Work" : "Break") + " phase complete!");
                 if (wasWorkPhase) {
                     task.incrementPomodoros();
+                    // Play work complete sound
+                    soundManager.playSound(SoundManager.SoundType.WORK_COMPLETE);
+                } else {
+                    // Play break complete sound
+                    soundManager.playSound(SoundManager.SoundType.BREAK_COMPLETE);
                 }
             }
             
             @Override
             public void onTimerComplete() {
                 System.out.println("\nTimer cycle completed!");
+                // Play timer complete sound
+                soundManager.playSound(SoundManager.SoundType.TIMER_COMPLETE);
             }
         };
     }

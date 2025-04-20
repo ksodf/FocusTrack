@@ -2,6 +2,7 @@ package main.ui;
 
 import main.model.Task;
 import main.model.TaskManager;
+import main.sound.SoundManager;
 import main.timer.*;
 
 import java.util.Scanner;
@@ -17,6 +18,7 @@ public class TimerUI {
     private final TaskManager taskManager;
     private final TimerManager timerManager;
     private final TimerDisplayManager displayManager;
+    private final SoundManager soundManager;
     private final Scanner scanner;
     private final ScheduledExecutorService timerDisplayExecutor;
     private boolean running;
@@ -25,6 +27,7 @@ public class TimerUI {
         this.taskManager = TaskManager.getInstance();
         this.timerManager = TimerManager.getInstance();
         this.displayManager = new TimerDisplayManager();
+        this.soundManager = SoundManager.getInstance();
         this.scanner = new Scanner(System.in);
         this.timerDisplayExecutor = Executors.newSingleThreadScheduledExecutor();
         this.running = false;
@@ -81,11 +84,15 @@ public class TimerUI {
                 completeTask();
                 break;
             case 8:
+                soundSettings();
+                break;
+            case 9:
                 running = false;
                 System.out.println("Exiting application...");
                 break;
             default:
                 System.out.println("Invalid option. Please try again.");
+                soundManager.playSound(SoundManager.SoundType.ERROR);
                 waitForEnter();
         }
     }
@@ -100,7 +107,12 @@ public class TimerUI {
         System.out.println("5. Resume Timer");
         System.out.println("6. Cancel Timer");
         System.out.println("7. Mark Task as Completed");
-        System.out.println("8. Exit");
+        System.out.println("8. Sound Settings");
+        System.out.println("9. Exit");
+        
+        // Display sound status
+        System.out.println("\nSound: " + (soundManager.isSoundEnabled() ? "ON" : "OFF") + 
+                          " (Volume: " + Math.round(soundManager.getVolume() * 100) + "%)");
         
         // Display timer status if any active timers
         if (!timerManager.getAllActiveTimers().isEmpty()) {
@@ -151,6 +163,71 @@ public class TimerUI {
         }
         
         System.out.println("\nProgress: " + taskManager.getCompletionRate() + "%");
+    }
+    
+    private void soundSettings() {
+        boolean settingsActive = true;
+        
+        while (settingsActive) {
+            displayManager.clearConsole();
+            System.out.println("\n===== Sound Settings =====");
+            System.out.println("1. " + (soundManager.isSoundEnabled() ? "Disable" : "Enable") + " Sound");
+            System.out.println("2. Increase Volume");
+            System.out.println("3. Decrease Volume");
+            System.out.println("4. Test Sounds");
+            System.out.println("5. Back to Main Menu");
+            System.out.println("\nCurrent status: Sound " + (soundManager.isSoundEnabled() ? "ON" : "OFF") + 
+                              ", Volume: " + Math.round(soundManager.getVolume() * 100) + "%");
+            System.out.print("\nChoose an option: ");
+            
+            int choice = getIntInput();
+            
+            switch (choice) {
+                case 1:
+                    soundManager.setSoundEnabled(!soundManager.isSoundEnabled());
+                    System.out.println("Sound " + (soundManager.isSoundEnabled() ? "enabled" : "disabled"));
+                    break;
+                case 2:
+                    soundManager.setVolume(soundManager.getVolume() + 0.1f);
+                    System.out.println("Volume increased to " + Math.round(soundManager.getVolume() * 100) + "%");
+                    break;
+                case 3:
+                    soundManager.setVolume(soundManager.getVolume() - 0.1f);
+                    System.out.println("Volume decreased to " + Math.round(soundManager.getVolume() * 100) + "%");
+                    break;
+                case 4:
+                    testSounds();
+                    break;
+                case 5:
+                    settingsActive = false;
+                    break;
+                default:
+                    System.out.println("Invalid option. Please try again.");
+            }
+            
+            if (settingsActive && choice != 5) {
+                waitForEnter();
+            }
+        }
+    }
+    
+    private void testSounds() {
+        System.out.println("\nPlaying test sounds...");
+        
+        System.out.println("Work complete sound:");
+        soundManager.playSound(SoundManager.SoundType.WORK_COMPLETE);
+        try { Thread.sleep(1500); } catch (InterruptedException e) { }
+        
+        System.out.println("Break complete sound:");
+        soundManager.playSound(SoundManager.SoundType.BREAK_COMPLETE);
+        try { Thread.sleep(1500); } catch (InterruptedException e) { }
+        
+        System.out.println("Timer complete sound:");
+        soundManager.playSound(SoundManager.SoundType.TIMER_COMPLETE);
+        try { Thread.sleep(1500); } catch (InterruptedException e) { }
+        
+        System.out.println("Error sound:");
+        soundManager.playSound(SoundManager.SoundType.ERROR);
     }
     
     private void startTimer() {
@@ -213,6 +290,7 @@ public class TimerUI {
                 break;
             default:
                 System.out.println("Invalid strategy, using Pomodoro by default.");
+                soundManager.playSound(SoundManager.SoundType.ERROR);
                 type = TimerStrategyType.POMODORO;
         }
         
@@ -248,13 +326,18 @@ public class TimerUI {
             public void onPhaseComplete(boolean wasWorkPhase) {
                 if (wasWorkPhase) {
                     task.incrementPomodoros();
-                    // This notification will appear in the next UI refresh
+                    // Play work complete sound
+                    soundManager.playSound(SoundManager.SoundType.WORK_COMPLETE);
+                } else {
+                    // Play break complete sound
+                    soundManager.playSound(SoundManager.SoundType.BREAK_COMPLETE);
                 }
             }
             
             @Override
             public void onTimerComplete() {
-                // Timer cycle completed
+                // Timer cycle completed - play completion sound
+                soundManager.playSound(SoundManager.SoundType.TIMER_COMPLETE);
             }
         });
     }
@@ -274,6 +357,7 @@ public class TimerUI {
         
         if (!timerManager.hasActiveTimer(task)) {
             System.out.println("No active timer for this task.");
+            soundManager.playSound(SoundManager.SoundType.ERROR);
             waitForEnter();
             return;
         }
@@ -299,6 +383,7 @@ public class TimerUI {
         
         if (timer == null || timer.isRunning()) {
             System.out.println("No paused timer for this task.");
+            soundManager.playSound(SoundManager.SoundType.ERROR);
             waitForEnter();
             return;
         }
@@ -323,6 +408,7 @@ public class TimerUI {
         
         if (timerManager.getTimerForTask(task) == null) {
             System.out.println("No timer for this task.");
+            soundManager.playSound(SoundManager.SoundType.ERROR);
             waitForEnter();
             return;
         }
@@ -358,6 +444,7 @@ public class TimerUI {
     private boolean isValidTaskIndex(int taskIndex) {
         if (taskIndex < 0 || taskIndex >= taskManager.getTasks().size()) {
             System.out.println("Invalid task number.");
+            soundManager.playSound(SoundManager.SoundType.ERROR);
             waitForEnter();
             return false;
         }
@@ -368,6 +455,7 @@ public class TimerUI {
         try {
             return Integer.parseInt(scanner.nextLine().trim());
         } catch (NumberFormatException e) {
+            soundManager.playSound(SoundManager.SoundType.ERROR);
             return -1;
         }
     }
@@ -377,6 +465,7 @@ public class TimerUI {
             int value = Integer.parseInt(scanner.nextLine().trim());
             return value > 0 ? value : defaultValue;
         } catch (NumberFormatException e) {
+            soundManager.playSound(SoundManager.SoundType.ERROR);
             return defaultValue;
         }
     }
@@ -398,6 +487,7 @@ public class TimerUI {
         }
         
         timerManager.clearAllTimers();
+        soundManager.cleanup();
         scanner.close();
     }
     
