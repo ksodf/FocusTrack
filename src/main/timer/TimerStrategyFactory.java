@@ -31,36 +31,50 @@ public class TimerStrategyFactory {
      * 
      * @param name The name of the strategy
      * @param description The description of the strategy
-     * @param workDuration The work duration in minutes
-     * @param breakDuration The break duration in minutes
+     * @param workMinutes The work duration in minutes
+     * @param workSeconds & seconds
+     * @param breakMinutes The break duration in minutes
+     * @param breakSeconds & seconds
      * @return A custom TimerStrategy
      */
     public static TimerStrategy createCustomStrategy(
-            final String name, 
-            final String description, 
-            final int workDuration, 
-            final int breakDuration) {
-        
-        return new TimerStrategy() {
-            @Override
-            public int getWorkDuration() {
-                return workDuration;
-            }
+        final String name, 
+        final String description, 
+        final int workMinutes,
+        final int workSeconds,
+        final int breakMinutes,
+        final int breakSeconds) {
+    
+            return new TimerStrategy() {
+                @Override
+                public int getWorkDuration() {
+                    return workMinutes;
+                }
+                
+                @Override
+                public int getWorkDurationSeconds() {
+                    return workSeconds;
+                }
 
-            @Override
-            public int getBreakDuration() {
-                return breakDuration;
-            }
+                @Override
+                public int getBreakDuration() {
+                    return breakMinutes;
+                }
+                
+                @Override
+                public int getBreakDurationSeconds() {
+                    return breakSeconds;
+                }
 
-            @Override
-            public String getName() {
-                return name;
-            }
+                @Override
+                public String getName() {
+                    return name;
+                }
 
-            @Override
-            public String getDescription() {
-                return description;
-            }
-        };
-    }
+                @Override
+                public String getDescription() {
+                    return description;
+                }
+            };
+        }
 }

@@ -55,6 +55,12 @@ public class TimerManager {
             activeTimers.remove(task);
         }
     }
+
+    public void resetTimer(Task task) {
+        if (activeTimers.containsKey(task)) {
+            activeTimers.get(task).reset();
+        }
+    }
     
     public TaskTimer getTimerForTask(Task task) {
         return activeTimers.get(task);

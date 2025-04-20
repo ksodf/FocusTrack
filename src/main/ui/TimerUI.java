@@ -309,10 +309,16 @@ public class TimerUI {
         System.out.print("Enter work duration (minutes): ");
         int workDuration = getPositiveIntInput(25); // Default to 25 if invalid
         
+        System.out.print("Enter work duration (minutes): ");
+        int workSeconds = getPositiveIntInput(0);
+        
         System.out.print("Enter break duration (minutes): ");
         int breakDuration = getPositiveIntInput(5); // Default to 5 if invalid
+
+        System.out.print("Enter work duration (minutes): ");
+        int breakSeconds = getPositiveIntInput(0);
         
-        return TimerStrategyFactory.createCustomStrategy(name, description, workDuration, breakDuration);
+        return TimerStrategyFactory.createCustomStrategy(name, description, workDuration, workSeconds, breakDuration, breakSeconds);
     }
     
     private void setupTimerListener(final TaskTimer timer, final Task task) {

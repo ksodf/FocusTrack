@@ -20,8 +20,8 @@ public class TaskTimer {
         this.strategy = strategy;
         this.isRunning = false;
         this.isWorkPhase = true;
-        this.remainingSeconds = strategy.getWorkDuration() * 60;
-        this.isConsoleMode = false; // Default to non-console mode
+        this.remainingSeconds = strategy.getTotalWorkSeconds(); // Use the new helper method
+        this.isConsoleMode = false;
     }
 
     public interface TimerListener {
@@ -62,10 +62,10 @@ public class TaskTimer {
                     
                     // If work phase just ended and there's a break, start break
                     if (!isWorkPhase) {
-                        remainingSeconds = strategy.getBreakDuration() * 60;
+                        remainingSeconds = strategy.getTotalBreakSeconds(); // Use the new helper method
                     } else {
                         // If break just ended, reset to work phase
-                        remainingSeconds = strategy.getWorkDuration() * 60;
+                        remainingSeconds = strategy.getTotalWorkSeconds(); // Use the new helper method
                         if (listener != null) {
                             listener.onTimerComplete();
                         }
@@ -96,7 +96,31 @@ public class TaskTimer {
     public void cancel() {
         pause();
         isWorkPhase = true;
-        remainingSeconds = strategy.getWorkDuration() * 60;
+        remainingSeconds = strategy.getTotalWorkSeconds(); 
+    }
+
+    // In TaskTimer.java, add a reset method
+    public void reset() {
+        boolean wasRunning = isRunning;
+        
+        if (wasRunning) {
+            pause();
+        }
+        
+        // Reset to the beginning of the current phase
+        if (isWorkPhase) {
+            remainingSeconds = strategy.getTotalWorkSeconds();
+        } else {
+            remainingSeconds = strategy.getTotalBreakSeconds();
+        }
+        
+        if (wasRunning) {
+            resume();
+        }
+        
+        if (listener != null) {
+            listener.onTick(remainingSeconds);
+        }
     }
 
     public void changeStrategy(TimerStrategy newStrategy) {
@@ -108,7 +132,7 @@ public class TaskTimer {
         
         this.strategy = newStrategy;
         this.isWorkPhase = true;
-        this.remainingSeconds = newStrategy.getWorkDuration() * 60;
+        this.remainingSeconds = newStrategy.getTotalWorkSeconds(); 
         
         if (wasRunning) {
             resume();

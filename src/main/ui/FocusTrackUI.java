@@ -9,8 +9,6 @@ import main.timer.*;
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
 import java.awt.*;
-import java.awt.event.ActionEvent;
-import java.awt.event.ActionListener;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
 import java.util.List;
@@ -35,6 +33,8 @@ public class FocusTrackUI extends JFrame {
     private JButton pauseButton;
     private JButton addTaskButton;
     private JButton completeTaskButton;
+    private JButton resetButton;
+    private JButton changeStrategyButton;
     private JPanel taskListPanel;
     private Task currentTask;
     private TimerStrategy currentStrategy;
@@ -50,11 +50,6 @@ public class FocusTrackUI extends JFrame {
         
         // Default timer strategy
         currentStrategy = new PomodoroTimer();
-        
-        // Create sample tasks if there are none
-        if (taskManager.getTasks().isEmpty()) {
-            createSampleTasks();
-        }
         
         initUI();
         
@@ -99,6 +94,10 @@ public class FocusTrackUI extends JFrame {
         JPanel panel = new JPanel();
         panel.setLayout(new BorderLayout(10, 20));
         panel.setBackground(Color.WHITE);
+
+        changeStrategyButton = new JButton("Change Strategy");
+        changeStrategyButton.addActionListener(e -> changeTimerStrategy());
+        changeStrategyButton.setEnabled(false);
         
         // Timer display
         timerLabel = new JLabel("25:00", JLabel.CENTER);
@@ -111,7 +110,7 @@ public class FocusTrackUI extends JFrame {
         
         // Buttons panel
         JPanel buttonsPanel = new JPanel();
-        buttonsPanel.setLayout(new GridLayout(1, 2, 20, 0));
+        buttonsPanel.setLayout(new GridLayout(2, 2, 10, 10)); // Change to 2x2 grid
         buttonsPanel.setBackground(Color.WHITE);
         
         startButton = new JButton("Start Timer");
@@ -121,15 +120,41 @@ public class FocusTrackUI extends JFrame {
         pauseButton.addActionListener(e -> pauseTimer());
         pauseButton.setEnabled(false);
         
+        // New reset button
+        resetButton = new JButton("Reset Timer");
+        resetButton.addActionListener(e -> resetTimer());
+        resetButton.setEnabled(false);
+        
         buttonsPanel.add(startButton);
         buttonsPanel.add(pauseButton);
-        
-        // Add components to timer panel
+        buttonsPanel.add(resetButton);
+        buttonsPanel.add(changeStrategyButton);
+
         panel.add(timerLabel, BorderLayout.NORTH);
         panel.add(progressBar, BorderLayout.CENTER);
         panel.add(buttonsPanel, BorderLayout.SOUTH);
         
         return panel;
+    }
+
+    private void changeTimerStrategy() {
+        if (currentTask == null) {
+            JOptionPane.showMessageDialog(this, "Please select a task first.", "No Task Selected", JOptionPane.WARNING_MESSAGE);
+            return;
+        }
+        
+        // Show strategy dialog
+        showTimerStrategyDialog();
+        
+        // If there's an active timer, change its strategy
+        TaskTimer timer = timerManager.getTimerForTask(currentTask);
+        if (timer != null) {
+            timer.changeStrategy(currentStrategy);
+            
+            // Update UI
+            updateTimerUI();
+            updateTaskList();
+        }
     }
     
     private JPanel createTaskPanel() {
@@ -195,40 +220,193 @@ public class FocusTrackUI extends JFrame {
         panel.setMaximumSize(new Dimension(WIDTH - 50, 40));
         panel.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
         
+        // Set background for already selected task
+        if (currentTask != null && task.equals(currentTask)) {
+            panel.setBackground(new Color(240, 240, 255));
+        } else {
+            panel.setBackground(UIManager.getColor("Panel.background"));
+        }
+        
         // Task details
-        JLabel taskTitle = new JLabel(task.getTitle());
-        taskTitle.setFont(new Font("SansSerif", Font.PLAIN, 16));
+        String title = task.getTitle();
+        
+        // Add indicator for active timer
+        if (timerManager.getTimerForTask(task) != null) {
+            TaskTimer taskTimer = timerManager.getTimerForTask(task);
+            String phaseIndicator = taskTimer.isWorkPhase() ? "🔴" : "🔵";
+            String runningIndicator = taskTimer.isRunning() ? "▶️" : "⏸️";
+            title = runningIndicator + " " + phaseIndicator + " " + title;
+        }
+        
+        JPanel taskInfoPanel = new JPanel(new BorderLayout(5, 3));
+        taskInfoPanel.setOpaque(false);
+        
+        JLabel taskTitle = new JLabel(title);
+        taskTitle.setFont(new Font("SansSerif", Font.BOLD, 16));
+        
+        // Add description if it exists
+        String desc = task.getDescription();
+        JLabel taskDesc = null;
+        if (desc != null && !desc.trim().isEmpty()) {
+            taskDesc = new JLabel(desc);
+            taskDesc.setFont(new Font("SansSerif", Font.ITALIC, 12));
+            taskDesc.setForeground(Color.DARK_GRAY);
+        }
+        
+        taskInfoPanel.add(taskTitle, BorderLayout.NORTH);
+        if (taskDesc != null) {
+            taskInfoPanel.add(taskDesc, BorderLayout.SOUTH);
+        }
+        
+        // Add to main panel
+        panel.add(taskInfoPanel, BorderLayout.CENTER);
         
         // Task status
         String statusText = (task.getStatus() == TaskStatus.COMPLETED) ? "Completed" : "Pending";
         JLabel taskStatus = new JLabel(statusText);
-        taskStatus.setHorizontalAlignment(JLabel.RIGHT);
         taskStatus.setForeground(task.getStatus() == TaskStatus.COMPLETED ? new Color(100, 150, 100) : Color.GRAY);
         
+        // Delete button
+        JButton deleteButton = new JButton("×");
+        deleteButton.setFont(new Font("SansSerif", Font.BOLD, 16));
+        deleteButton.setForeground(Color.RED);
+        deleteButton.setBorderPainted(false);
+        deleteButton.setContentAreaFilled(false);
+        deleteButton.setFocusPainted(false);
+        deleteButton.addActionListener(e -> deleteTask(task));
+        
+        // Add components to panel
         panel.add(taskTitle, BorderLayout.WEST);
-        panel.add(taskStatus, BorderLayout.EAST);
+        
+        JPanel rightPanel = new JPanel(new BorderLayout(5, 0));
+        rightPanel.setOpaque(false);
+        rightPanel.add(taskStatus, BorderLayout.CENTER);
+        rightPanel.add(deleteButton, BorderLayout.EAST);
+        
+        panel.add(rightPanel, BorderLayout.EAST);
         
         // Make task selectable
         panel.addMouseListener(new java.awt.event.MouseAdapter() {
             @Override
             public void mouseClicked(java.awt.event.MouseEvent evt) {
                 selectTask(task);
-                panel.setBackground(new Color(240, 240, 255));
-                
-                // Deselect others
-                for (Component c : taskListPanel.getComponents()) {
-                    if (c != panel && c instanceof JPanel) {
-                        c.setBackground(null);
-                    }
-                }
+                updateTaskList(); // Update the entire list to reflect selection
             }
         });
         
         return panel;
     }
     
+    private void deleteTask(Task task) {
+        // Ask for confirmation
+        int confirm = JOptionPane.showConfirmDialog(
+            this,
+            "Are you sure you want to delete task: " + task.getTitle() + "?",
+            "Confirm Deletion",
+            JOptionPane.YES_NO_OPTION
+        );
+        
+        if (confirm == JOptionPane.YES_OPTION) {
+            // Find the task's index
+            int index = taskManager.getTasks().indexOf(task);
+            if (index != -1) {
+                // Cancel any timer for this task
+                if (timerManager.hasActiveTimer(task)) {
+                    timerManager.cancelTimer(task);
+                    
+                    // Reset UI if this was the active task
+                    if (task.equals(currentTask)) {
+                        startButton.setEnabled(true);
+                        pauseButton.setEnabled(false);
+                        resetButton.setEnabled(false);
+                        progressBar.setValue(0);
+                        timerLabel.setText(formatTime(currentStrategy.getTotalWorkSeconds()));
+                        currentTask = null;
+                    }
+                }
+                
+                // Delete the task
+                taskManager.deleteTask(index);
+                updateTaskList();
+            }
+        }
+    }
+    
     private void selectTask(Task task) {
+        // Store the previously selected task
+        Task previousTask = currentTask;
         currentTask = task;
+        
+        // If we're switching tasks and there was a previous task with a running timer
+        if (previousTask != null && !previousTask.equals(currentTask) && 
+            timerManager.hasActiveTimer(previousTask)) {
+            // Ask user if they want to pause the previous timer
+            int response = JOptionPane.showConfirmDialog(
+                this,
+                "You have an active timer for task: " + previousTask.getTitle() + "\nDo you want to pause it?",
+                "Switch Task",
+                JOptionPane.YES_NO_OPTION
+            );
+            
+            if (response == JOptionPane.YES_OPTION) {
+                timerManager.pauseTimer(previousTask);
+            }
+        }
+        
+        // Update UI to reflect current task's timer state
+        updateTimerUI();
+    }
+    
+    // New method to get the timer UI based on current task
+    private TaskTimer getCurrentTaskTimer() {
+        return currentTask != null ? timerManager.getTimerForTask(currentTask) : null;
+    }
+
+    private void updateTimerUI() {
+        activeTimer = getCurrentTaskTimer();
+        
+        if (activeTimer != null) {
+            // We have a timer for this task
+            if (activeTimer.isRunning()) {
+                // Timer is running
+                startButton.setEnabled(false);
+                pauseButton.setEnabled(true);
+                pauseButton.setText("Pause Timer");
+                resetButton.setEnabled(true);
+                
+                // Update display
+                timerLabel.setText(formatTime(activeTimer.getRemainingSeconds()));
+                
+                // Update progress bar based on current phase
+                int totalSeconds = activeTimer.isWorkPhase() ? 
+                    activeTimer.getStrategy().getTotalWorkSeconds() :
+                    activeTimer.getStrategy().getTotalBreakSeconds();
+                
+                double progress = 1.0 - ((double) activeTimer.getRemainingSeconds() / totalSeconds);
+                progressBar.setValue((int) (progress * 100));
+            } else {
+                // Timer exists but is paused
+                startButton.setEnabled(true);
+                pauseButton.setEnabled(true);
+                pauseButton.setText("Resume Timer");
+                resetButton.setEnabled(true);
+                
+                // Update display
+                timerLabel.setText(formatTime(activeTimer.getRemainingSeconds()));
+            }
+        } else {
+            // No timer for this task
+            startButton.setEnabled(true);
+            pauseButton.setEnabled(false);
+            pauseButton.setText("Pause Timer");
+            resetButton.setEnabled(false);
+            
+            // Reset timer display to strategy default
+            timerLabel.setText(formatTime(currentStrategy.getTotalWorkSeconds()));
+            progressBar.setValue(0);
+        }
+
+        changeStrategyButton.setEnabled(currentTask != null);
     }
     
     private void startTimer() {
@@ -243,17 +421,31 @@ public class FocusTrackUI extends JFrame {
             return;
         }
         
-        // Reset UI
-        startButton.setEnabled(false);
-        pauseButton.setEnabled(true);
+        // Get existing timer if any
+        TaskTimer existingTimer = timerManager.getTimerForTask(currentTask);
         
-        // Cancel existing timer if any
-        if (activeTimer != null) {
-            timerManager.cancelTimer(currentTask);
+        if (existingTimer != null && !existingTimer.isRunning()) {
+            // Resume existing paused timer
+            timerManager.resumeTimer(currentTask);
+            activeTimer = existingTimer;
+            
+            // Update UI
+            startButton.setEnabled(false);
+            pauseButton.setEnabled(true);
+            pauseButton.setText("Pause Timer");
+            resetButton.setEnabled(true);
+            
+            updateTaskList(); // Update task list to show the timer is running
+            return;
         }
         
+        // Reset UI for new timer
+        startButton.setEnabled(false);
+        pauseButton.setEnabled(true);
+        pauseButton.setText("Pause Timer");
+        resetButton.setEnabled(true);
+        
         // Start new timer
-        int totalSeconds = currentStrategy.getWorkDuration() * 60;
         activeTimer = timerManager.startTimer(currentTask, currentStrategy);
         
         // Setup timer listener
@@ -261,65 +453,144 @@ public class FocusTrackUI extends JFrame {
             @Override
             public void onTick(int seconds) {
                 SwingUtilities.invokeLater(() -> {
-                    // Update timer display
-                    timerLabel.setText(formatTime(seconds));
+                    // Only update if this is still the current task
+                    if (currentTask != null && currentTask.equals(activeTimer.getTask())) {
+                        // Update timer display
+                        timerLabel.setText(formatTime(seconds));
+                        
+                        // Update progress bar
+                        int totalSeconds = activeTimer.isWorkPhase() ? 
+                            activeTimer.getStrategy().getTotalWorkSeconds() :
+                            activeTimer.getStrategy().getTotalBreakSeconds();
+                        
+                        double progress = 1.0 - ((double) seconds / totalSeconds);
+                        progressBar.setValue((int) (progress * 100));
+                    }
                     
-                    // Update progress bar
-                    double progress = 1.0 - ((double) seconds / totalSeconds);
-                    progressBar.setValue((int) (progress * 100));
+                    // Always update the task list to show running timers
+                    updateTaskList();
                 });
             }
             
             @Override
             public void onPhaseComplete(boolean wasWorkPhase) {
                 SwingUtilities.invokeLater(() -> {
+                    Task timerTask = activeTimer.getTask();
                     if (wasWorkPhase) {
                         // Work phase complete
-                        currentTask.incrementPomodoros();
+                        timerTask.incrementPomodoros();
                         soundManager.playSound(SoundManager.SoundType.WORK_COMPLETE);
+                        
+                        String taskName = timerTask.getTitle();
                         JOptionPane.showMessageDialog(FocusTrackUI.this, 
-                            "Work phase complete! Take a break.", "Phase Complete", JOptionPane.INFORMATION_MESSAGE);
+                            "Work phase complete for task: " + taskName + "! Take a break.", 
+                            "Phase Complete", JOptionPane.INFORMATION_MESSAGE);
                     } else {
                         // Break phase complete
                         soundManager.playSound(SoundManager.SoundType.BREAK_COMPLETE);
+                        
+                        String taskName = timerTask.getTitle();
                         JOptionPane.showMessageDialog(FocusTrackUI.this, 
-                            "Break complete! Ready to work again?", "Phase Complete", JOptionPane.INFORMATION_MESSAGE);
+                            "Break complete for task: " + taskName + "! Ready to work again?", 
+                            "Phase Complete", JOptionPane.INFORMATION_MESSAGE);
                     }
+                    
+                    // Update UI if this is still the current task
+                    if (currentTask != null && currentTask.equals(timerTask)) {
+                        updateTimerUI();
+                    }
+                    
+                    // Update task list
+                    updateTaskList();
                 });
             }
             
             @Override
             public void onTimerComplete() {
                 SwingUtilities.invokeLater(() -> {
+                    Task timerTask = activeTimer.getTask();
                     soundManager.playSound(SoundManager.SoundType.TIMER_COMPLETE);
-                    startButton.setEnabled(true);
-                    pauseButton.setEnabled(false);
-                    progressBar.setValue(100);
+                    
+                    // Update UI if this is still the current task
+                    if (currentTask != null && currentTask.equals(timerTask)) {
+                        startButton.setEnabled(true);
+                        pauseButton.setEnabled(false);
+                        resetButton.setEnabled(false);
+                        progressBar.setValue(100);
+                    }
                     
                     // Ask if task is complete
+                    String taskName = timerTask.getTitle();
                     int response = JOptionPane.showConfirmDialog(FocusTrackUI.this, 
-                        "Timer cycle completed! Is this task finished?", 
+                        "Timer cycle completed for task: " + taskName + "! Is this task finished?", 
                         "Timer Complete", JOptionPane.YES_NO_OPTION);
                     
                     if (response == JOptionPane.YES_OPTION) {
-                        completeTask(currentTask);
-                        updateTaskList();
+                        completeTask(timerTask);
                     }
+                    
+                    // Update the task list
+                    updateTaskList();
                 });
             }
         });
+        
+        // Update task list to show the timer is running
+        updateTaskList();
     }
     
     private void pauseTimer() {
-        if (activeTimer != null && activeTimer.isRunning()) {
-            timerManager.pauseTimer(currentTask);
-            pauseButton.setText("Resume Timer");
-            startButton.setEnabled(true);
-        } else if (activeTimer != null) {
-            // Resume timer
-            timerManager.resumeTimer(currentTask);
-            pauseButton.setText("Pause Timer");
-            startButton.setEnabled(false);
+        if (currentTask == null) {
+            JOptionPane.showMessageDialog(this, "No task selected.", "No Task", JOptionPane.WARNING_MESSAGE);
+            return;
+        }
+        
+        TaskTimer timer = timerManager.getTimerForTask(currentTask);
+        
+        if (timer != null) {
+            if (timer.isRunning()) {
+                // Pause the timer
+                timerManager.pauseTimer(currentTask);
+                pauseButton.setText("Resume Timer");
+                startButton.setEnabled(true);
+            } else {
+                // Resume the timer
+                timerManager.resumeTimer(currentTask);
+                pauseButton.setText("Pause Timer");
+                startButton.setEnabled(false);
+            }
+            
+            // Update task list to reflect timer state change
+            updateTaskList();
+        } else {
+            JOptionPane.showMessageDialog(this, "No active timer for the selected task.", 
+                "No Timer", JOptionPane.WARNING_MESSAGE);
+        }
+    }
+
+    private void resetTimer() {
+        if (currentTask == null) {
+            JOptionPane.showMessageDialog(this, "No task selected.", 
+                "No Task", JOptionPane.WARNING_MESSAGE);
+            return;
+        }
+        
+        TaskTimer timer = timerManager.getTimerForTask(currentTask);
+        
+        if (timer != null) {
+            timerManager.resetTimer(currentTask);
+            
+            // Update UI
+            timerLabel.setText(formatTime(timer.getRemainingSeconds()));
+            
+            // Update progress bar
+            progressBar.setValue(0);
+            
+            // Update task list
+            updateTaskList();
+        } else {
+            JOptionPane.showMessageDialog(this, "No active timer to reset.", 
+                "No Timer", JOptionPane.WARNING_MESSAGE);
         }
     }
     
@@ -335,12 +606,12 @@ public class FocusTrackUI extends JFrame {
     
     private void completeTask(Task task) {
         // Cancel any running timer
-        if (timerManager.hasActiveTimer(task)) {
+        if (timerManager.getTimerForTask(task) != null) {
             timerManager.cancelTimer(task);
-            if (task == currentTask) {
-                startButton.setEnabled(true);
-                pauseButton.setEnabled(false);
-                pauseButton.setText("Pause Timer");
+            
+            // Update UI if this was the current task
+            if (task.equals(currentTask)) {
+                updateTimerUI();
             }
         }
         
@@ -348,9 +619,12 @@ public class FocusTrackUI extends JFrame {
         task.markCompleted();
         
         // Reset current task if it was the completed one
-        if (task == currentTask) {
+        if (task.equals(currentTask)) {
             currentTask = null;
         }
+        
+        // Update task list
+        updateTaskList();
     }
     
     private void showAddTaskDialog() {
@@ -374,14 +648,16 @@ public class FocusTrackUI extends JFrame {
     }
     
     private void createSampleTasks() {
-        taskManager.addTask(new Task("Complete assignment", "Due tomorrow"));
-        taskManager.addTask(new Task("Read book", "Chapter 5"));
-        
-        Task exerciseTask = new Task("Exercise", "30 minutes");
-        exerciseTask.markCompleted();
-        taskManager.addTask(exerciseTask);
+        if (taskManager.getTasks().isEmpty()) {
+            taskManager.addTask(new Task("Complete assignment", "Due tomorrow"));
+            taskManager.addTask(new Task("Read book", "Chapter 5"));
+            
+            Task exerciseTask = new Task("Exercise", "30 minutes");
+            exerciseTask.markCompleted();
+            taskManager.addTask(exerciseTask);
+        }
     }
-    
+
     private String formatTime(int seconds) {
         int minutes = seconds / 60;
         int secs = seconds % 60;
@@ -428,16 +704,31 @@ public class FocusTrackUI extends JFrame {
     
     private void showCustomTimerDialog() {
         JTextField nameField = new JTextField("Custom Timer");
-        JTextField workField = new JTextField("25");
-        JTextField breakField = new JTextField("5");
+        JTextField workMinutesField = new JTextField("25", 3);
+        JTextField workSecondsField = new JTextField("0", 3); 
+        JTextField breakMinutesField = new JTextField("5", 3); 
+        JTextField breakSecondsField = new JTextField("0", 3);
         
         JPanel panel = new JPanel(new GridLayout(0, 2));
         panel.add(new JLabel("Timer name:"));
         panel.add(nameField);
-        panel.add(new JLabel("Work duration (minutes):"));
-        panel.add(workField);
-        panel.add(new JLabel("Break duration (minutes):"));
-        panel.add(breakField);
+        
+        JPanel workPanel = new JPanel(new FlowLayout(FlowLayout.LEFT));
+        workPanel.add(workMinutesField);
+        workPanel.add(new JLabel("min"));
+        workPanel.add(workSecondsField);
+        workPanel.add(new JLabel("sec"));
+        
+        JPanel breakPanel = new JPanel(new FlowLayout(FlowLayout.LEFT));
+        breakPanel.add(breakMinutesField);
+        breakPanel.add(new JLabel("min"));
+        breakPanel.add(breakSecondsField);
+        breakPanel.add(new JLabel("sec"));
+        
+        panel.add(new JLabel("Work duration:"));
+        panel.add(workPanel);
+        panel.add(new JLabel("Break duration:"));
+        panel.add(breakPanel);
         
         int result = JOptionPane.showConfirmDialog(this, panel, 
                 "Custom Timer", JOptionPane.OK_CANCEL_OPTION);
@@ -445,29 +736,56 @@ public class FocusTrackUI extends JFrame {
         if (result == JOptionPane.OK_OPTION) {
             try {
                 String name = nameField.getText();
-                int workDuration = Integer.parseInt(workField.getText());
-                int breakDuration = Integer.parseInt(breakField.getText());
+                int workMinutes = Integer.parseInt(workMinutesField.getText().trim());
+                int workSeconds = Integer.parseInt(workSecondsField.getText().trim());
+                int breakMinutes = Integer.parseInt(breakMinutesField.getText().trim());
+                int breakSeconds = Integer.parseInt(breakSecondsField.getText().trim());
                 
-                if (workDuration <= 0 || breakDuration <= 0) {
-                    throw new NumberFormatException("Durations must be positive");
+                // Validate inputs
+                if (workMinutes < 0 || workSeconds < 0 || workSeconds >= 60 || 
+                    breakMinutes < 0 || breakSeconds < 0 || breakSeconds >= 60 ||
+                    (workMinutes == 0 && workSeconds == 0) || 
+                    (breakMinutes == 0 && breakSeconds == 0)) {
+                    throw new IllegalArgumentException("Invalid time values");
                 }
+                
+                // Create description with minutes and seconds
+                String workDesc = formatTimeDescription(workMinutes, workSeconds);
+                String breakDesc = formatTimeDescription(breakMinutes, breakSeconds);
+                String description = workDesc + " of focused work followed by a " + breakDesc + " break";
                 
                 currentStrategy = TimerStrategyFactory.createCustomStrategy(
                     name,
-                    workDuration + " minutes of focused work followed by a " + breakDuration + "-minute break",
-                    workDuration,
-                    breakDuration
+                    description,
+                    workMinutes,
+                    workSeconds,
+                    breakMinutes,
+                    breakSeconds
                 );
                 
                 // Update timer display
-                timerLabel.setText(String.format("%02d:00", workDuration));
+                int totalSeconds = currentStrategy.getTotalWorkSeconds();
+                timerLabel.setText(formatTime(totalSeconds));
                 
-            } catch (NumberFormatException e) {
+            } catch (IllegalArgumentException e) {
                 JOptionPane.showMessageDialog(this, 
-                    "Please enter valid positive numbers for durations.",
+                    "Please enter valid positive numbers for durations.\n" +
+                    "Seconds must be between 0-59.\n" +
+                    "At least one duration must be greater than 0.",
                     "Invalid Input", 
                     JOptionPane.ERROR_MESSAGE);
             }
+        }
+    }
+    
+    // Helper method to format time descriptions
+    private String formatTimeDescription(int minutes, int seconds) {
+        if (minutes > 0 && seconds > 0) {
+            return minutes + " minutes and " + seconds + " seconds";
+        } else if (minutes > 0) {
+            return minutes + " minute" + (minutes == 1 ? "" : "s");
+        } else {
+            return seconds + " second" + (seconds == 1 ? "" : "s");
         }
     }
     
@@ -501,6 +819,9 @@ public class FocusTrackUI extends JFrame {
         if (soundManager != null) {
             soundManager.cleanup();
         }
+        
+        // Save tasks before exit
+        taskManager.saveTasks();
     }
     
     public static void main(String[] args) {
