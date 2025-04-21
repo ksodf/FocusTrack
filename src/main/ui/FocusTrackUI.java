@@ -233,9 +233,8 @@ public class FocusTrackUI extends JFrame {
         // Add indicator for active timer
         if (timerManager.getTimerForTask(task) != null) {
             TaskTimer taskTimer = timerManager.getTimerForTask(task);
-            String phaseIndicator = taskTimer.isWorkPhase() ? "🔴" : "🔵";
             String runningIndicator = taskTimer.isRunning() ? "▶️" : "⏸️";
-            title = runningIndicator + " " + phaseIndicator + " " + title;
+            title = runningIndicator + " " + title;
         }
         
         JPanel taskInfoPanel = new JPanel(new BorderLayout(5, 3));
