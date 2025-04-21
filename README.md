@@ -1,7 +1,34 @@
-## Getting Started
+# **FocusTrack**
 
-Welcome to the VS Code Java world. Here is a guideline to help you get started to write Java code in Visual Studio Code.
+## **Project Overview**
 
+FocusTrack is a simple and effective desktop application built with Java Swing to help users manage their tasks and stay focused using a countdown timer.
+
+## **Features**
+
+- Add, delete, and save personal tasks
+- Countdown timer with adjustable minutes and seconds
+- Save and load tasks from a local file (resources/tasks.txt)
+- Reset timer button to original set time
+
+## **Real-World Use Case**
+
+FocusTrack helps users — students and professionals — to improve productivity by combining task management and focus sessions in a lightweight application.
+
+## **Design Patterns Implemented**
+
+| **Pattern** | **Application** |
+| --- | --- |
+| Singleton | Ensures a single instance of TaskManager |
+| Observer | Updates TaskManagerPanel automatically when tasks change |
+| Strategy | Provides flexibility for timer countdown behaviors |
+
+## **OOP Principles Applied**
+
+- **Encapsulation:** Task and timer states are managed internally.
+- **Abstraction:** Interfaces such as TaskListener and TimerStrategy.
+- **Inheritance:** Custom panels extend JPanel.
+- **Polymorphism:** Timer behavior changes dynamically without modifying main timer logic.
 ## Folder Structure
 
 The workspace contains two folders by default, where:
