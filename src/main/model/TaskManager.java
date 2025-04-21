@@ -2,7 +2,6 @@ package main.model;
 
 import main.io.TaskFileHandler;
 
-import java.util.ArrayList;
 import java.util.List;
 
 public class TaskManager {
