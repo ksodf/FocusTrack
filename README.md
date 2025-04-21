@@ -31,6 +31,10 @@ FocusTrack helps users — students and professionals — to improve productivit
 - **Polymorphism:** Timer behavior changes dynamically without modifying main timer logic.
 ## Folder Structure
 
+## **How to Run**
+
+Compile and run MainFrame.java. Tasks will automatically be saved in and loaded from resources/tasks.txt.
+
 The workspace contains two folders by default, where:
 
 - `src`: the folder to maintain sources
