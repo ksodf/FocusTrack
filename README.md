@@ -33,7 +33,7 @@ FocusTrack helps users — students and professionals — to improve productivit
 
 ## **How to Run**
 
-Compile and run MainFrame.java. Tasks will automatically be saved in and loaded from resources/tasks.txt.
+Compile and run FocusTrackLauncher.java. Tasks will automatically be saved in and loaded from resources/tasks.txt.
 
 The workspace contains two folders by default, where:
 
